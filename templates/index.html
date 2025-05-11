@@ -1,70 +1,185 @@
 <!DOCTYPE html>
-<html>
-  <head>
+<html lang="en">
+
+<!-- By NesAnTime for Chat with Chan -->
+
+<head>
     <meta charset="UTF-8">
     <title>Chat with Chan</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-      }
-      .chatbox {
-        height: 400px;
-        overflow: auto;
-        border: 1px solid #ccc;
-        padding: 10px;
-      }
-      .message {
-        margin-bottom: 10px;
-      }
-      .user {
-        color: blue;
-      }
-      .bot {
-        color: green;
-      }
-      input[type="text"] {
-        width: 100%;
-        padding: 10px;
-        box-sizing: border-box;
-        border: 1px solid #ccc;
-      }
+        body {
+            background-color: #1e1e2f;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: #2a2a40;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            border-bottom: 2px solid #444;
+        }
+
+        #chatbox {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 10px 15px;
+            border-radius: 12px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .user {
+            background-color: #3f51b5;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .bot {
+            background-color: #333;
+            align-self: flex-start;
+            margin-right: auto;
+        }
+
+        #chat-form {
+            display: flex;
+            padding: 15px 20px;
+            background-color: #2a2a40;
+            border-top: 2px solid #444;
+        }
+
+        #message-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            background-color: #444;
+            color: #fff;
+        }
+
+        #send-btn {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #3f51b5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        @keyframes blink {
+            0%   { opacity: 0.2; }
+            20%  { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+
+        .dot {
+            animation: blink 1.5s infinite;
+            display: inline-block;
+            margin-left: 2px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .dot1 { animation-delay: 0s; }
+        .dot2 { animation-delay: 0; }
+        .dot3 { animation-delay: 0.4s; }
+
+        .message.bot .dot:nth-of-type(1) { animation-delay: 0s; }
+        .message.bot .dot:nth-of-type(2) { animation-delay: 0.2s; }
+        .message.bot .dot:nth-of-type(3) { animation-delay: 0.4s; }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+
     </style>
-  </head>
-  <body>
-    <h1>Chat with Chan</h1>
-    <div class="chatbox" id="chatbox"></div>
-    <input type="text" id="message" placeholder="Type your message here...">
-    <button id="send">Send</button>
+</head>
+<body>
+
+    <header>
+        Chat with Chan 💬
+    </header>
+
+    <div id="chatbox"></div>
+
+    <form id="chat-form">
+        <input type="text" id="message-input" placeholder="Write Your Message..." autocomplete="off" />
+        <button type="submit" id="send-btn">Send</button>
+    </form>
+
     <script>
-      var chatbox = document.getElementById("chatbox");
-      var message = document.getElementById("message");
-      var send = document.getElementById("send");
-      
-      send.addEventListener("click", function() {
-        var userMessage = message.value;
-        var userDiv = document.createElement("div");
-        userDiv.className = "message user";
-        userDiv.innerHTML = "<strong>You:</strong> " + userMessage;
-        chatbox.appendChild(userDiv);
-        
-        message.value = "";
-        
-        fetch("/get_response?message=" + encodeURIComponent(userMessage))
-          .then(function(response) {
-            return response.text();
-          })
-          .then(function(botMessage
-          ) {
-            var botDiv = document.createElement("div");
-            botDiv.className = "message bot";
-            botDiv.innerHTML = "<strong>Chan:</strong> " + botMessage;
-            chatbox.appendChild(botDiv);
-            
+        const chatbox = document.getElementById("chatbox");
+        const form = document.getElementById("chat-form");
+        const input = document.getElementById("message-input");
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const message = input.value.trim();
+            if (message === '') return;
+
+            appendMessage('user', message);
+            input.value = '';
+
+            const loadingMsg = appendMessage('bot', 'Chan is Writing <span class="dot dot1">.</span><span class="dot dot2">.</span><span class="dot dot3">.</span>', true);
+
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            try {
+                const response = await fetch("/preguntar", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ pregunta: message })
+                });
+
+                const data = await response.json();
+
+                await typeWriter(loadingMsg, data.respuesta);
+            } catch (err) {
+                loadingMsg.innerHTML = "⚠️ Error connecting to Chan";
+            }
+        });
+
+        function appendMessage(sender, text, isHTML = false) {
+            const div = document.createElement('div');
+            div.className = 'message ' + sender;
+            if (isHTML) {
+                div.innerHTML = text;
+            } else {
+                div.textContent = text;
+            }
+            chatbox.appendChild(div);
             chatbox.scrollTop = chatbox.scrollHeight;
-        });
-        });
+            return div;
+        }
+
+        async function typeWriter(element, text, speed = 10) {
+            element.innerHTML = '';
+            for (let i = 0; i < text.length; i++) {
+                element.innerHTML += text.charAt(i);
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+        }
     </script>
 
-    </body>
+</body>
 </html>
+
+
